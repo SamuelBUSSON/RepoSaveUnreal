@@ -9,6 +9,7 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 
 #define print(text) if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 1.5, FColor::Green,text)
@@ -33,6 +34,10 @@ ACharacterController::ACharacterController()
 	DashFOVDelta = 30.0f;
 	DashCameraLagDelta = 60.0f;
 	DashChromaticAbberationDelta = 5.0f;
+
+	HoldTimeAirControl = 0.2f;
+	AirControlValue = 1.0f;
+	AirControlFallStrength = 0.3f;
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -68,6 +73,11 @@ ACharacterController::ACharacterController()
 void ACharacterController::BeginPlay()
 {
 	Super::BeginPlay();
+
+
+
+	BaseGravityScale = GetCharacterMovement()->GravityScale;
+	BaseAirControl = GetCharacterMovement()->AirControl;
 
 	if (CurveDashFloat)
 	{
@@ -109,15 +119,15 @@ void ACharacterController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	CurveFTimeline.TickTimeline(DeltaTime);
-
-
 }
+
+
 void ACharacterController::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacterController::CustomJump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacterController::CustomStopJumping);
 
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &ACharacterController::Dash);
 	PlayerInputComponent->BindAction("Dash", IE_Released, this, &ACharacterController::StopDashing);
@@ -142,6 +152,21 @@ void ACharacterController::SetupPlayerInputComponent(class UInputComponent* Play
 
 }
 
+void ACharacterController::CustomJump()
+{
+	Jump();
+	GetWorld()->GetTimerManager().SetTimer(FuzeTimerHandle, this, &ACharacterController::CheckHoldJump, HoldTimeAirControl, false);
+	bIsInputJump = true;
+}
+
+void ACharacterController::CustomStopJumping()
+{
+	StopJumping();
+	StopAirControl();
+
+	bIsInputJump = false;
+}
+
 
 void ACharacterController::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
@@ -151,6 +176,15 @@ void ACharacterController::TouchStarted(ETouchIndex::Type FingerIndex, FVector L
 void ACharacterController::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
 {
 	StopJumping();
+}
+
+void ACharacterController::CheckHoldJump()
+{
+	if (bIsInputJump)
+	{
+		StartAirControl();
+	}
+
 }
 
 void ACharacterController::TurnAtRate(float Rate)
@@ -193,6 +227,23 @@ void ACharacterController::MoveRight(float Value)
 		AddMovementInput(Direction, Value);
 	}
 }
+
+void ACharacterController::StartAirControl()
+{
+	//print("Start air control");
+	GetCharacterMovement()->GravityScale = AirControlFallStrength;
+	GetCharacterMovement()->AirControl = AirControlValue;
+	GetCharacterMovement()->Velocity.Z = 0;
+}
+
+void ACharacterController::StopAirControl()
+{
+	//print("Stop air control");
+	GetCharacterMovement()->GravityScale = BaseGravityScale;
+	GetCharacterMovement()->AirControl = BaseAirControl;
+
+}
+
 
 
 void ACharacterController::Dash() 

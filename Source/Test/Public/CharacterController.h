@@ -74,9 +74,22 @@ protected:
 	UPROPERTY(EditAnywhere, Category = Movements)
 	float DashChromaticAbberationDelta;
 
+	UPROPERTY(EditAnywhere, Category = Movements)
+	float HoldTimeAirControl;
+
+	UPROPERTY(EditAnywhere, Category = Movements)
+	float AirControlFallStrength;
+
+	UPROPERTY(EditAnywhere, Category = Movements)
+	float AirControlValue;
+
 	float BaseFOV;
 	float BaseCameraLag;
 	float BaseChromaticAbberation;
+
+
+	float BaseGravityScale;;
+	float BaseAirControl;
 
 
 	FPostProcessSettings* PostProcessSettings;
@@ -112,6 +125,17 @@ protected:
 
 	void StopDashing();
 
+	void CustomJump();
+
+	void CustomStopJumping();
+
+	void StartAirControl();
+
+	void StopAirControl();
+
+	void CheckHoldJump();
+	FTimerHandle FuzeTimerHandle;
+	bool bIsInputJump;
 
 
 protected:
