@@ -2,6 +2,7 @@
 
 #pragma once
 
+
 #include "CoreMinimal.h"
 #include "Components/TimelineComponent.h"
 
@@ -11,10 +12,21 @@
 
 #include "GameFramework/Pawn.h"
 #include "GameFramework/CharacterMovementComponent.h"
+
+UENUM(BlueprintType)
+enum ECameraType
+{
+	NearCamera,
+	MiddleCamera,
+	FarCamera,
+};
+
+
 #include "CharacterController.generated.h"
 
 
 class UCurveFloat;
+
 
 UCLASS()
 class TEST_API ACharacterController : public ACharacter
@@ -28,6 +40,17 @@ class TEST_API ACharacterController : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class UCameraComponent* CameraSinging;
+
+
+	/** LerpCamera camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class UCameraComponent* CameraLerp;
+
+
 
 
 	virtual void BeginPlay() override;
@@ -53,17 +76,33 @@ public:
 	void TimelineProgress(FVector Value);
 
 	UFUNCTION()
+	void TimelineProgressCameraTransition(FVector Value);
+
+	UFUNCTION()
 	void StopDashTimeline();
 
+	UFUNCTION()
+	void StopSingingTimeline();
+
 	virtual void Tick(float DeltaTime) override;
+
+
 
 
 protected:
 
 	FTimeline CurveFTimeline;
+	FTimeline CurveFCameraTimeline;
+
+
+	UPROPERTY(EditAnywhere, Category = CameraType)
+	TEnumAsByte<ECameraType> camera;
 
 	UPROPERTY(EditAnywhere, Category = Movements)
-	UCurveVector* CurveDashFloat;
+	UCurveVector* CurveDashVector;
+
+	UPROPERTY(EditAnywhere, Category = Movements)
+	UCurveVector* CurveCameraVector;
 
 	UPROPERTY(EditAnywhere, Category = Movements)
 	float DashFOVDelta;
@@ -83,6 +122,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = Movements)
 	float AirControlValue;
 
+
 	float BaseFOV;
 	float BaseCameraLag;
 	float BaseChromaticAbberation;
@@ -91,10 +131,12 @@ protected:
 	float BaseGravityScale;;
 	float BaseAirControl;
 
+	bool bIsThirdPersonCurrentCamera;
+	bool bIsSinging;
+
 
 	FPostProcessSettings* PostProcessSettings;
 	FOnTimelineEvent CurveFTimelineFinish;
-
 
 
 	/** Called for forwards/backward input */
@@ -115,12 +157,6 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
-	/** Handler for when a touch input begins. */
-	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
-
-	/** Handler for when a touch input stops. */
-	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
-
 	void Dash();
 
 	void StopDashing();
@@ -132,6 +168,13 @@ protected:
 	void StartAirControl();
 
 	void StopAirControl();
+
+	void StartSinging();
+
+	void TurnCamera(float Rate);
+
+	void LookUpCamera(float Rate);
+
 
 	void CheckHoldJump();
 	FTimerHandle FuzeTimerHandle;

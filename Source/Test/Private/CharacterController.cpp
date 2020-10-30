@@ -11,9 +11,9 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "UObject/UObjectGlobals.h"
 
-#define print(text) if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 1.5, FColor::Green,text)
-#define printFString(text, fstring) if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green, FString::Printf(TEXT(text), fstring))
 
 // Sets default values
 ACharacterController::ACharacterController()
@@ -56,6 +56,7 @@ ACharacterController::ACharacterController()
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 0.0f;
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -63,9 +64,17 @@ ACharacterController::ACharacterController()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 
+	CameraLerp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraLerp"));
+	CameraLerp->SetupAttachment(RootComponent);
+
+	CameraSinging = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraSinging"));
+	CameraSinging->SetupAttachment(RootComponent); 
+
 
     //Take control of the default Player
     AutoPossessPlayer = EAutoReceiveInput::Player0;
+
+	bIsThirdPersonCurrentCamera = true;
 
 }
 
@@ -75,11 +84,12 @@ void ACharacterController::BeginPlay()
 	Super::BeginPlay();
 
 
-
 	BaseGravityScale = GetCharacterMovement()->GravityScale;
 	BaseAirControl = GetCharacterMovement()->AirControl;
 
-	if (CurveDashFloat)
+	CameraSinging->SetActive(false);
+
+	if (CurveDashVector)
 	{
 		FOnTimelineVector TimelineProgress;
 		FOnTimelineEventStatic TimelineFinishedCallback;
@@ -88,13 +98,25 @@ void ACharacterController::BeginPlay()
 		TimelineProgress.BindUFunction(this, FName("TimelineProgress"));
 		TimelineFinishedCallback.BindUFunction(this, FName("StopDashTimeline"));
 
-		CurveFTimeline.AddInterpVector(CurveDashFloat, TimelineProgress);
+		CurveFTimeline.AddInterpVector(CurveDashVector, TimelineProgress);
 		CurveFTimeline.SetTimelineFinishedFunc(TimelineFinishedCallback);
 
 
 		BaseFOV = FollowCamera->FieldOfView;
 		BaseCameraLag = CameraBoom->CameraLagSpeed;
 		BaseChromaticAbberation = FollowCamera->PostProcessSettings.SceneFringeIntensity;
+	}
+
+	if (CurveCameraVector)
+	{
+		FOnTimelineVector TimelineProgress;
+		FOnTimelineEventStatic TimelineFinishedCallback;
+
+		TimelineProgress.BindUFunction(this, FName("TimelineProgressCameraTransition"));
+		TimelineFinishedCallback.BindUFunction(this, FName("StopSingingTimeline"));
+
+		CurveFCameraTimeline.AddInterpVector(CurveCameraVector, TimelineProgress);
+		CurveFCameraTimeline.SetTimelineFinishedFunc(TimelineFinishedCallback);
 	}
 
 	int32 count = GetWorld()->PostProcessVolumes.Num();
@@ -119,6 +141,7 @@ void ACharacterController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	CurveFTimeline.TickTimeline(DeltaTime);
+	CurveFCameraTimeline.TickTimeline(DeltaTime);
 }
 
 
@@ -128,6 +151,9 @@ void ACharacterController::SetupPlayerInputComponent(class UInputComponent* Play
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacterController::CustomJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacterController::CustomStopJumping);
+
+
+	PlayerInputComponent->BindAction("Sing", IE_Pressed, this, &ACharacterController::StartSinging);
 
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &ACharacterController::Dash);
 	PlayerInputComponent->BindAction("Dash", IE_Released, this, &ACharacterController::StopDashing);
@@ -139,17 +165,26 @@ void ACharacterController::SetupPlayerInputComponent(class UInputComponent* Play
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("Turn", this, &ACharacterController::TurnCamera);
 	PlayerInputComponent->BindAxis("TurnRate", this, &ACharacterController::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &ACharacterController::LookUpCamera);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ACharacterController::LookUpAtRate);
 
-	// handle touch devices
-	PlayerInputComponent->BindTouch(IE_Pressed, this, &ACharacterController::TouchStarted);
-	PlayerInputComponent->BindTouch(IE_Released, this, &ACharacterController::TouchStopped);
 
 
 
+}
+
+void ACharacterController::TurnCamera(float Rate)
+{
+	if(!bIsSinging)
+		AddControllerYawInput(Rate);
+}
+
+void ACharacterController::LookUpCamera(float Rate)
+{
+	if (!bIsSinging)
+		AddControllerPitchInput(Rate);
 }
 
 void ACharacterController::CustomJump()
@@ -167,17 +202,6 @@ void ACharacterController::CustomStopJumping()
 	bIsInputJump = false;
 }
 
-
-void ACharacterController::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	Jump();
-}
-
-void ACharacterController::TouchStopped(ETouchIndex::Type FingerIndex, FVector Location)
-{
-	StopJumping();
-}
-
 void ACharacterController::CheckHoldJump()
 {
 	if (bIsInputJump)
@@ -187,21 +211,54 @@ void ACharacterController::CheckHoldJump()
 
 }
 
+void ACharacterController::StartSinging()
+{
+
+	/*bIsThirdPersonCurrentCamera = !bIsThirdPersonCurrentCamera;
+
+	CameraBoom->bUsePawnControlRotation = bIsThirdPersonCurrentCamera;
+
+	FollowCamera->SetActive(bIsThirdPersonCurrentCamera);*/
+
+
+	if (!bIsSinging)
+	{
+		CameraLerp->SetActive(true);
+		CameraSinging->SetActive(false);
+		FollowCamera->SetActive(false);
+	}
+
+
+	
+	bIsSinging = !bIsSinging;
+	CameraLerp->SetWorldLocationAndRotation(FollowCamera->GetComponentLocation(), FollowCamera->GetComponentRotation());
+
+
+	CurveFCameraTimeline.PlayFromStart();
+	
+}
+
 void ACharacterController::TurnAtRate(float Rate)
 {
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+	if (!bIsSinging)
+	{
+		// calculate delta for this frame from the rate information
+		AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+	}
 }
 
 void ACharacterController::LookUpAtRate(float Rate)
 {
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	if (!bIsSinging)
+	{
+		// calculate delta for this frame from the rate information
+		AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	}
 }
 
 void ACharacterController::MoveForward(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
+	if ((Controller != NULL) && (Value != 0.0f) && !bIsSinging)
 	{
 		// find out which way is forward
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -215,7 +272,7 @@ void ACharacterController::MoveForward(float Value)
 
 void ACharacterController::MoveRight(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f))
+	if ((Controller != NULL) && (Value != 0.0f) && !bIsSinging)
 	{
 		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -233,7 +290,7 @@ void ACharacterController::StartAirControl()
 	//print("Start air control");
 	GetCharacterMovement()->GravityScale = AirControlFallStrength;
 	GetCharacterMovement()->AirControl = AirControlValue;
-	GetCharacterMovement()->Velocity.Z = 0;
+	//GetCharacterMovement()->Velocity.Z = 0;
 }
 
 void ACharacterController::StopAirControl()
@@ -274,6 +331,37 @@ void ACharacterController::TimelineProgress(FVector Value)
 	FollowCamera->SetFieldOfView(FMath::Lerp(BaseFOV, BaseFOV + DashFOVDelta, Value.X));
 	PostProcessSettings->SceneFringeIntensity = FMath::Lerp(BaseChromaticAbberation, BaseChromaticAbberation + DashChromaticAbberationDelta, Value.X);
 	CameraBoom->CameraLagSpeed = FMath::Lerp(BaseCameraLag, BaseCameraLag + DashCameraLagDelta, Value.Y);
+}
+
+void ACharacterController::TimelineProgressCameraTransition(FVector Value)
+{
+
+	if (bIsSinging)
+	{
+		//printFString("Value : %f", Value.X);
+		CameraLerp->SetWorldLocationAndRotation(
+			FMath::Lerp(FollowCamera->GetComponentLocation(), CameraSinging->GetComponentLocation(), Value.X),
+			FMath::Lerp(FollowCamera->GetComponentRotation(), CameraSinging->GetComponentRotation(), Value.X));
+	}
+	else 
+	{
+		//printFString("Value : %f", Value.X);
+		CameraLerp->SetWorldLocationAndRotation(
+			FMath::Lerp(CameraSinging->GetComponentLocation(), FollowCamera->GetComponentLocation(), Value.X),
+			FMath::Lerp(CameraSinging->GetComponentRotation(), FollowCamera->GetComponentRotation(), Value.X));
+	}
+
+
+}
+
+void ACharacterController::StopSingingTimeline()
+{
+	if (!bIsSinging)
+	{
+		CameraLerp->SetActive(false);
+		CameraSinging->SetActive(false);
+		FollowCamera->SetActive(true);
+	}
 }
 
 void ACharacterController::StopDashTimeline()
