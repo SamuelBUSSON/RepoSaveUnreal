@@ -13,6 +13,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/UObjectGlobals.h"
+#include "DrawDebugHelpers.h" 
+#include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 
 
 // Sets default values
@@ -38,6 +40,10 @@ ACharacterController::ACharacterController()
 	HoldTimeAirControl = 0.2f;
 	AirControlValue = 1.0f;
 	AirControlFallStrength = 0.3f;
+
+	WallRunForce = 1.5f; 
+	WallRunCameraTiltTime = 0.3f;
+	WallRunCameraTiltAngle = 20.0f;
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -70,12 +76,15 @@ ACharacterController::ACharacterController()
 	CameraSinging = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraSinging"));
 	CameraSinging->SetupAttachment(RootComponent); 
 
+	p_CurrentEcho = MakeShareable(new TArray<ESingButton>());
+
 
     //Take control of the default Player
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	bIsThirdPersonCurrentCamera = true;
-
+	CurrentEchoPlayedSong = 0;
+		
 }
 
 // Called when the game starts or when spawned
@@ -144,6 +153,28 @@ void ACharacterController::Tick(float DeltaTime)
 	CurveFCameraTimeline.TickTimeline(DeltaTime);
 }
 
+bool ACharacterController::IsWallRuningRight()
+{
+	return bIsWallRunning && bIsWallRight;
+}
+
+bool ACharacterController::IsWallRuningLeft()
+{
+	return bIsWallRunning && bIsWallLeft;
+}
+
+FVector ACharacterController::GetWallPositionLeft()
+{
+	return WallPositionLeft + FVector::UpVector * 50.0f;
+}
+
+FVector ACharacterController::GetWallPositionRight()
+{
+	return WallPositionRight + FVector::UpVector * 50.0f;
+}
+
+
+
 
 void ACharacterController::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
@@ -154,9 +185,16 @@ void ACharacterController::SetupPlayerInputComponent(class UInputComponent* Play
 
 
 	PlayerInputComponent->BindAction("Sing", IE_Pressed, this, &ACharacterController::StartSinging);
+	PlayerInputComponent->BindAction("ValidateEcho", IE_Pressed, this, &ACharacterController::ValidateEcho);
+
+	
 
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &ACharacterController::Dash);
 	PlayerInputComponent->BindAction("Dash", IE_Released, this, &ACharacterController::StopDashing);
+
+	PlayerInputComponent->BindAction<FPlaySongDelegate>("Do", IE_Pressed, this, &ACharacterController::PlaySong, ESingButton::Do);
+	PlayerInputComponent->BindAction<FPlaySongDelegate>("Re", IE_Pressed, this, &ACharacterController::PlaySong, ESingButton::Re);
+	PlayerInputComponent->BindAction<FPlaySongDelegate>("Mi", IE_Pressed, this, &ACharacterController::PlaySong, ESingButton::Mi);	
 
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ACharacterController::MoveForward);
@@ -187,11 +225,16 @@ void ACharacterController::LookUpCamera(float Rate)
 		AddControllerPitchInput(Rate);
 }
 
+
+
 void ACharacterController::CustomJump()
 {
-	Jump();
-	GetWorld()->GetTimerManager().SetTimer(FuzeTimerHandle, this, &ACharacterController::CheckHoldJump, HoldTimeAirControl, false);
-	bIsInputJump = true;
+	if (!bIsSinging)
+	{
+		Jump();
+		GetWorld()->GetTimerManager().SetTimer(FuzeTimerHandle, this, &ACharacterController::CheckHoldJump, HoldTimeAirControl, false);
+		bIsInputJump = true;
+	}
 }
 
 void ACharacterController::CustomStopJumping()
@@ -200,6 +243,154 @@ void ACharacterController::CustomStopJumping()
 	StopAirControl();
 
 	bIsInputJump = false;
+}
+
+void ACharacterController::CheckForWall(float Value)
+{
+	FHitResult OutHit;
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorRightVector() * 100.0f;
+	FCollisionQueryParams CollisionParams;
+	bIsWallRight = false;
+	bIsWallLeft = false;
+
+	// Check if there is a wall on the right side
+	if (GetWorld()->LineTraceSingleByObjectType(OutHit, Start, End, ECC_WorldStatic, CollisionParams))
+	{
+		bIsWallRight = true;
+		WallPositionRight = OutHit.ImpactPoint;
+	}
+
+	// Check if there is a wall on the left side
+	End = Start + GetActorRightVector() * -100.0f;	
+	if (GetWorld()->LineTraceSingleByObjectType(OutHit, Start, End, ECC_WorldStatic, CollisionParams))
+	{
+		bIsWallLeft = true;
+		WallPositionLeft = OutHit.ImpactPoint;
+	}
+
+	//If there is no more walls stop wall running
+	if ((!bIsWallRight && !bIsWallLeft) || FMath::Abs(Value) < 0.05f)
+		StopWallRun();
+
+}
+
+void ACharacterController::StartWallRun()
+{
+	if (!bIsWallRunning)
+	{
+		GetCharacterMovement()->Velocity.Z = .0f;
+		/* Rotation Lerp */
+		//FollowCamera->SetWorldRotation(FollowCamera->GetComponentRotation() + FRotator(0, 0, (bIsWallRight ? -1 : 1) * 25));
+		FLatentActionInfo LatentInfo;
+		LatentInfo.CallbackTarget = FollowCamera;
+
+		UKismetSystemLibrary::MoveComponentTo(
+			FollowCamera,
+			FollowCamera->GetRelativeLocation(), 
+			FollowCamera->GetRelativeRotation() + FRotator(0, 0, (bIsWallRight ? -1 : 1) * WallRunCameraTiltAngle),
+			true,
+			true,
+			WallRunCameraTiltTime,
+			true,
+			EMoveComponentAction::Move, 
+			LatentInfo);
+
+		FLatentActionInfo LatentInfoMesh;
+		LatentInfoMesh.CallbackTarget = GetMesh();
+		
+
+		GetCharacterMovement()->GravityScale = 0.05f;
+		bIsWallRunning = true;
+	}
+
+
+	const FRotator Rotation = Controller->GetControlRotation();
+	const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+	// get forward vector
+	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	//AddMovementInput(Direction, 1.0f * WallRunForce);
+
+	GetCharacterMovement()->AddForce(GetActorForwardVector() * WallRunForce);
+
+
+	GetCharacterMovement()->AddForce(GetActorRightVector() * WallRunForce  * (bIsWallLeft ? -1 : 1));
+}
+
+void ACharacterController::StopWallRun()
+{
+	if (bIsWallRunning)
+	{
+		FLatentActionInfo LatentInfo;
+		LatentInfo.CallbackTarget = this;
+		UKismetSystemLibrary::MoveComponentTo(
+			FollowCamera,
+			FollowCamera->GetRelativeLocation(),
+			FRotator::ZeroRotator,
+			true,
+			true,
+			WallRunCameraTiltTime,
+			true,
+			EMoveComponentAction::Move,
+			LatentInfo);
+
+		bIsWallRunning = false;
+		GetCharacterMovement()->GravityScale = BaseGravityScale;
+	}
+
+}
+
+void ACharacterController::PlaySong(ESingButton songPlayed)
+{
+	if (bIsSinging)
+	{
+		p_CurrentEcho->Add(songPlayed);
+		OnSingingDelegate.Broadcast(songPlayed);
+	}
+}
+
+void ACharacterController::ValidateEcho()
+{
+	if (bIsSinging)
+	{
+		StartSinging();	
+		GetWorldTimerManager().SetTimer(EchoTimerHandle, this, &ACharacterController::PlayEcho, 0.1f, true, 0.5f);
+	}
+}
+
+void ACharacterController::PlayEcho()
+{
+	switch (p_CurrentEcho->GetData()[CurrentEchoPlayedSong])
+	{
+		case Do:
+			print("Do");
+			break;
+		case Re:
+			print("Re");
+			break;
+		case Mi:
+			print("Mi");
+			break;
+		case Fa:
+			print("Fa");
+			break;
+		case Sol:
+			print("Sol");
+			break;
+		case La:
+			print("La");
+			break;
+		case Si:
+			print("Si");
+			break;
+	}
+	++CurrentEchoPlayedSong;
+	if (CurrentEchoPlayedSong == p_CurrentEcho->Num() - 1)
+		CurrentEchoPlayedSong = 0;
+
+	//GetWorldTimerManager().SetTimer(EchoTimerHandle, this, &ACharacterController::PlayEcho, .0f, false, 1.0f);
+
 }
 
 void ACharacterController::CheckHoldJump()
@@ -227,8 +418,6 @@ void ACharacterController::StartSinging()
 		CameraSinging->SetActive(false);
 		FollowCamera->SetActive(false);
 	}
-
-
 	
 	bIsSinging = !bIsSinging;
 	CameraLerp->SetWorldLocationAndRotation(FollowCamera->GetComponentLocation(), FollowCamera->GetComponentRotation());
@@ -272,16 +461,29 @@ void ACharacterController::MoveForward(float Value)
 
 void ACharacterController::MoveRight(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f) && !bIsSinging)
+	if (!bIsSinging)
 	{
-		// find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		CheckForWall(Value);
 
-		// get right vector 
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		// add movement in that direction
-		AddMovementInput(Direction, Value);
+		if (FMath::Abs(Value) > 0.05f)
+		{
+			if (GetCharacterMovement()->IsFalling() && ((Value < 0 && bIsWallLeft) || (Value > 0 && bIsWallRight)))
+				StartWallRun();
+			else
+			{
+				if ((Controller != NULL) && (Value != 0.0f))
+				{
+					// find out which way is right
+					const FRotator Rotation = Controller->GetControlRotation();
+					const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+					// get right vector 
+					const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+					// add movement in that direction
+					AddMovementInput(Direction, Value);
+				}
+			}
+		}
 	}
 }
 
@@ -305,19 +507,19 @@ void ACharacterController::StopAirControl()
 
 void ACharacterController::Dash() 
 {
-	UE_LOG(LogTemp, Log , TEXT("Dash"));
+	if (!bIsSinging)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Dash"));
 
-	FVector dashDirectionActor = GetCharacterMovement()->IsFalling() ? FollowCamera->GetForwardVector() : GetActorForwardVector();
-	dashDirectionActor *= DashStrength;
-	dashDirectionActor.Z += DashDelta;
+		FVector dashDirectionActor = GetCharacterMovement()->IsFalling() ? FollowCamera->GetForwardVector() : GetActorForwardVector();
+		dashDirectionActor *= DashStrength;
+		dashDirectionActor.Z += DashDelta;
 
-	GetCharacterMovement()->GetCharacterOwner()->LaunchCharacter(dashDirectionActor, true, true);
+		GetCharacterMovement()->GetCharacterOwner()->LaunchCharacter(dashDirectionActor, true, true);
 
-	CameraBoom->bEnableCameraLag = true;
-	CurveFTimeline.PlayFromStart();
-
-
-
+		CameraBoom->bEnableCameraLag = true;
+		CurveFTimeline.PlayFromStart();
+	}
 }
 
 void ACharacterController::StopDashing()

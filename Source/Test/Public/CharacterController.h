@@ -21,12 +21,27 @@ enum ECameraType
 	FarCamera,
 };
 
+UENUM(BlueprintType)
+enum ESingButton
+{
+	Do,
+	Re,
+	Mi,
+	Fa,
+	Sol,
+	La,
+	Si,
+};
+
+
 
 #include "CharacterController.generated.h"
 
 
 class UCurveFloat;
+class FTestDelegate;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTestDelegate, ESingButton, SingNote);
 
 UCLASS()
 class TEST_API ACharacterController : public ACharacter
@@ -86,13 +101,30 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(BlueprintCallable, Category = "Wall Run")
+	bool IsWallRuningRight();
+
+	UFUNCTION(BlueprintCallable, Category = "Wall Run")
+	bool IsWallRuningLeft();
 
 
+	UFUNCTION(BlueprintCallable, Category = "Wall Run")
+	FVector GetWallPositionLeft();
+
+
+	UFUNCTION(BlueprintCallable, Category = "Wall Run")
+	FVector GetWallPositionRight();
+
+	UPROPERTY(BlueprintAssignable, Category = "Event")
+	FTestDelegate OnSingingDelegate;
+
+	TSharedPtr<TArray<ESingButton>> p_CurrentEcho;
 
 protected:
 
 	FTimeline CurveFTimeline;
 	FTimeline CurveFCameraTimeline;
+
 
 
 	UPROPERTY(EditAnywhere, Category = CameraType)
@@ -121,6 +153,17 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = Movements)
 	float AirControlValue;
+
+
+	UPROPERTY(EditAnywhere, Category = WallRun)
+	float WallRunForce;
+
+	UPROPERTY(EditAnywhere, Category = WallRun)
+	float WallRunCameraTiltTime;
+
+
+	UPROPERTY(EditAnywhere, Category = WallRun)
+	float WallRunCameraTiltAngle;
 
 
 	float BaseFOV;
@@ -175,10 +218,35 @@ protected:
 
 	void LookUpCamera(float Rate);
 
+	void CheckForWall(float Value);
+
+	void StartWallRun();
+
+	void StopWallRun();
+
+	DECLARE_DELEGATE_OneParam(FPlaySongDelegate, ESingButton);
+
+	void PlaySong(ESingButton songPlayed);
+
+	void ValidateEcho();
+
+	void PlayEcho();
+	FTimerHandle EchoTimerHandle;
+	int CurrentEchoPlayedSong;
+
 
 	void CheckHoldJump();
 	FTimerHandle FuzeTimerHandle;
+
 	bool bIsInputJump;
+
+	bool bIsWallRight;
+	bool bIsWallLeft;
+	bool bIsWallRunning;
+
+	FVector WallPositionRight;
+	FVector WallPositionLeft;
+
 
 
 protected:
