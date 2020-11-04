@@ -6,8 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "Components/TimelineComponent.h"
 #include "GameFramework/Character.h"
+#include "CharacterController.h"
 #include "MovementController.generated.h"
 
+class ACharacterController;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TEST_API UMovementController : public UActorComponent
@@ -18,10 +20,16 @@ public:
 	// Sets default values for this component's properties
 	UMovementController();
 
-	UPROPERTY(EditAnywhere)
-	UCurveFloat* DoorCurve;
+	UMovementController(ACharacterController* Controller);
 
-	UCharacterMovementComponent* Movement;
+	virtual void OnMovementChoose();
+	virtual void OnMovementUpdate(float DeltaTime);
+	virtual void OnMovementExit();
+	virtual void MovementAction();
+	virtual void SetMovementActive();
+	virtual void SetController(ACharacterController* Controller);
+	ACharacterController* pMyController;
+
 
 protected:
 	// Called when the game starts
@@ -30,13 +38,10 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	void DashAction();
+	inline bool IsComponentActive() { return bIsComponentActive; }
+	inline void SetIsComponentActive(bool isActive) { bIsComponentActive = isActive; }
 
 private:
-	ACharacter* Character;
 
-	UPROPERTY()
-	class UInputComponent* InputComponent;
-		
+	bool bIsComponentActive;
 };

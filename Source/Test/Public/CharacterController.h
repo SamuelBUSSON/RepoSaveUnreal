@@ -12,6 +12,7 @@
 
 #include "GameFramework/Pawn.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "MovementController.h"
 
 UENUM(BlueprintType)
 enum ECameraType
@@ -60,12 +61,12 @@ class TEST_API ACharacterController : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* CameraSinging;
 
-
 	/** LerpCamera camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* CameraLerp;
 
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
+	class UMovementController* DashMovement;
 
 
 	virtual void BeginPlay() override;
@@ -232,7 +233,7 @@ protected:
 
 	void PlayEcho();
 	FTimerHandle EchoTimerHandle;
-	int CurrentEchoPlayedSong;
+	int32 CurrentEchoPlayedSong;
 
 
 	void CheckHoldJump();
