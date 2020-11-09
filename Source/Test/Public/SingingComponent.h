@@ -74,40 +74,47 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Events")
 	void ListenOnSinging(ESingButton singingNote);
 
-
-	void PlayEcho();
+	/* Add note to the echo if the player is in singing mode
+	*@param songPlayed The input the player pressed => Note that will be added to the echo
+	*/
 	void PlaySong(ESingButton songPlayed);
+
+	/* Called when the player pressed the validate input
+	*/
 	void ValidateEcho();
+
+	/** Play Echo once the player validates his echo
+	*/
+	void PlayEcho();
+	
+	/**
+	* Start or stop singing on input pressed
+	*/
 	void StartSinging();
+
+	/**
+	* Set the character controller to call function from ACharacterController
+	*/
 	void SetController(ACharacterController* Controller);
 
 
-	FTimerHandle EchoTimerHandle;
-	int32 CurrentEchoPlayedSong;
-
-	ACharacterController* pMyController;
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	//The number of notes the echo can store
 	UPROPERTY(EditAnywhere, Category = Sing)
 	int32 NotesNumber;
 
-
+	TSharedPtr<TArray<ESingButton>> p_CurrentEcho;
 	int32 CurrentNumberOfNotesInEcho;
+	int32 CurrentEchoPlayedSong;
+	FTimerHandle EchoTimerHandle;
+
+	ACharacterController* pMyController;
 
 	bool bIsSinging;
-
-	TSharedPtr<TArray<ESingButton>> p_CurrentEcho;
-
-
-
-private:
-
-
-
-
 
 public:	
 	// Called every frame

@@ -8,7 +8,7 @@ USingingComponent::USingingComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	//PrimaryComponentTick.bCanEverTick = true;
 
 	//Init values that can be modifiy through the inspector
 	NotesNumber = 4;
@@ -28,21 +28,15 @@ void USingingComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	//Adding listeners to used them from blueprint
 	OnSingingDelegate.AddDynamic(this, &USingingComponent::ListenOnSinging);
 	StartSingingDelegate.AddDynamic(this, &USingingComponent::ListenOnStartSinging);
 
+	//Init the echo array with the number of notes
 	p_CurrentEcho->Init(ESingButton::None, NotesNumber);
 }
 
-
-// Called every frame
-void USingingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
-
+//Set the character controller 
 void USingingComponent::SetController(ACharacterController* Controller)
 {
 	pMyController = Controller;
@@ -107,10 +101,15 @@ void USingingComponent::ValidateEcho()
 	}
 }
 
+/**
+* Play the echo, it loops through all notes sung by the player
+*/
 void USingingComponent::PlayEcho()
 {
+	//If the player sing one note
 	if (p_CurrentEcho->Num() != 0)
 	{
+		//Broadcast event depending the note
 		switch (p_CurrentEcho->GetData()[CurrentEchoPlayedSong])
 		{
 			case Earth:
@@ -142,17 +141,19 @@ void USingingComponent::PlayEcho()
 		if (CurrentEchoPlayedSong == p_CurrentEcho->Num())
 			CurrentEchoPlayedSong = 0;
 
-		//Loop if there is sing in the list
+		//Loop
 		GetOwner()->GetWorldTimerManager().SetTimer(EchoTimerHandle, this, &USingingComponent::PlayEcho, .1f, false, 1.0f);
 	}
 }
 
 
+// Listener to use delegate in BP
 void USingingComponent::ListenOnStartSinging_Implementation(bool isSinging)
 {
 	return;
 }
 
+// Listener to use delegate in BP
 void USingingComponent::ListenOnSinging_Implementation(ESingButton singingNote)
 {
 	return;
