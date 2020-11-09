@@ -35,13 +35,20 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	bool bIsComponentActive;
+	bool isBlockingOthers;
+
+	UPROPERTY(EditAnywhere, Category = Debug)
+	bool bDisplayValues;
+
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	inline bool IsComponentActive() { return bIsComponentActive; }
+	inline bool IsBlockingOthers() { return isBlockingOthers; }
 	inline void SetIsComponentActive(bool isActive) { bIsComponentActive = isActive; }
 
 private:
 
-	bool bIsComponentActive;
+
 };

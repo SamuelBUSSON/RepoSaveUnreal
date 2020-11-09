@@ -14,7 +14,7 @@ class TEST_API UDashMovement : public UMovementController
 {
 	GENERATED_BODY()
 
-public : 
+protected : 
 	virtual void OnMovementChoose() override;
 	virtual void OnMovementUpdate(float DeltaTime) override;
 	virtual void OnMovementExit() override;

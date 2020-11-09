@@ -13,6 +13,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "MovementController.h"
+#include "SingingComponent.h"
 
 UENUM(BlueprintType)
 enum ECameraType
@@ -22,27 +23,13 @@ enum ECameraType
 	FarCamera,
 };
 
-UENUM(BlueprintType)
-enum ESingButton
-{
-	Do,
-	Re,
-	Mi,
-	Fa,
-	Sol,
-	La,
-	Si,
-};
-
 
 
 #include "CharacterController.generated.h"
 
 
 class UCurveFloat;
-class FTestDelegate;
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTestDelegate, ESingButton, SingNote);
+enum ESingButton;
 
 UCLASS()
 class TEST_API ACharacterController : public ACharacter
@@ -67,6 +54,12 @@ class TEST_API ACharacterController : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
 	class UMovementController* DashMovement;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
+	class UMovementController* WallJump;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
+	class USingingComponent* SingingComponent;
 
 
 	virtual void BeginPlay() override;
@@ -116,10 +109,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Wall Run")
 	FVector GetWallPositionRight();
 
-	UPROPERTY(BlueprintAssignable, Category = "Event")
-	FTestDelegate OnSingingDelegate;
 
-	TSharedPtr<TArray<ESingButton>> p_CurrentEcho;
+	void SwitchCameras(bool isSinging);
+
 
 protected:
 
@@ -167,6 +159,8 @@ protected:
 	float WallRunCameraTiltAngle;
 
 
+
+
 	float BaseFOV;
 	float BaseCameraLag;
 	float BaseChromaticAbberation;
@@ -176,11 +170,13 @@ protected:
 	float BaseAirControl;
 
 	bool bIsThirdPersonCurrentCamera;
-	bool bIsSinging;
+
+	bool bIsgoingForward;
 
 
 	FPostProcessSettings* PostProcessSettings;
 	FOnTimelineEvent CurveFTimelineFinish;
+
 
 
 	/** Called for forwards/backward input */
@@ -214,6 +210,10 @@ protected:
 	void StopAirControl();
 
 	void StartSinging();
+	void ValidateEcho();
+
+	DECLARE_DELEGATE_OneParam(FPlaySongDelegate, ESingButton);
+	void PlayNote(ESingButton note);
 
 	void TurnCamera(float Rate);
 
@@ -225,15 +225,7 @@ protected:
 
 	void StopWallRun();
 
-	DECLARE_DELEGATE_OneParam(FPlaySongDelegate, ESingButton);
 
-	void PlaySong(ESingButton songPlayed);
-
-	void ValidateEcho();
-
-	void PlayEcho();
-	FTimerHandle EchoTimerHandle;
-	int32 CurrentEchoPlayedSong;
 
 
 	void CheckHoldJump();
@@ -260,5 +252,7 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	inline bool IsGoingForward() const { return bIsgoingForward; }
 
 };
