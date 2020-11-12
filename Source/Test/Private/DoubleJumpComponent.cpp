@@ -21,15 +21,26 @@ void UDoubleJumpComponent::SetController(ACharacterController* Controller)
 
 void UDoubleJumpComponent::MovementAction()
 {
+    
     if(PMyController->JumpCurrentCount >= PMyController->JumpMaxCount && CurExtraJump < MaxExtraJump)
     {
+        if(bDisplayValues)
+        {
+            const FVector VelocityDebug = PMyController->GetVelocity();
+            print("Player performed a double jump:");
+            printFString("Jump power: %f", JumpPower);
+            printFString("Speed Multiplier: %f", HorizontalVelocityMultiplier);
+            printFString("Speed before jump: %f", FVector2D(VelocityDebug.X,VelocityDebug.Y).Size());
+            printFString("Speed after jump: %f", FVector2D(VelocityDebug.X,VelocityDebug.Y).Size() * HorizontalVelocityMultiplier);
+        }
+        
         ++CurExtraJump;
         const FVector Velocity = PMyController->GetVelocity();
         const float Multiplier = FVector2D(Velocity.X,Velocity.Y).Size() * HorizontalVelocityMultiplier;
         UCharacterMovementComponent* MovementComponent = PMyController->GetCharacterMovement();        
         MovementComponent->Velocity = PMyController->GetActorForwardVector() * Multiplier;		
         MovementComponent->AddImpulse(FVector::UpVector * JumpPower, true);
-    }
+    }     
 }
 
 void UDoubleJumpComponent::BeginPlay()

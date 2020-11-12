@@ -572,7 +572,6 @@ void ACharacterController::SwitchCameras(bool isSinging)
 void ACharacterController::Landed(const FHitResult& Hit)
 {
 	ACharacter::Landed(Hit);
-	print("Smu");
 	OnLandEvent.Broadcast();
 }
 
