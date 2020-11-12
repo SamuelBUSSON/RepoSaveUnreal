@@ -36,10 +36,16 @@ void USingingComponent::BeginPlay()
 	p_CurrentEcho->Init(ESingButton::None, NotesNumber);
 }
 
+
 //Set the character controller 
 void USingingComponent::SetController(ACharacterController* Controller)
 {
 	pMyController = Controller;
+}
+
+void USingingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
 

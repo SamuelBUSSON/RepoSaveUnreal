@@ -231,7 +231,7 @@ void ACharacterController::LookUpAtRate(float Rate)
 
 void ACharacterController::MoveForward(float Value)
 {
-	if ((Controller != NULL) && (Value != 0.0f) && !SingingComponent->IsSinging() && !WallJump->IsBlockingOthers())
+	if ((Controller != NULL) && (FMath::Abs(Value) >= KINDA_SMALL_NUMBER) && !SingingComponent->IsSinging() && !WallJump->IsBlockingOthers())
 	{
 		// find out which way is forward
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -241,7 +241,7 @@ void ACharacterController::MoveForward(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 		AddMovementInput(Direction, Value);
 	}
-	bIsgoingForward = Value > KINDA_SMALL_NUMBER;
+	bIsgoingForward = FMath::Abs(Value) > KINDA_SMALL_NUMBER;
 }
 
 void ACharacterController::MoveRight(float Value)
@@ -250,7 +250,7 @@ void ACharacterController::MoveRight(float Value)
 	{
 		CheckForWall(Value);
 
-		if (FMath::Abs(Value) > 0.05f)
+		if (FMath::Abs(Value) > KINDA_SMALL_NUMBER)
 		{
 			if (GetCharacterMovement()->IsFalling() && ((Value < 0 && bIsWallLeft) || (Value > 0 && bIsWallRight)))
 				StartWallRun();
@@ -270,6 +270,7 @@ void ACharacterController::MoveRight(float Value)
 			}
 		}
 	}
+	bIsgoingRight = FMath::Abs(Value) > KINDA_SMALL_NUMBER;
 }
 #pragma endregion
 

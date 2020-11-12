@@ -172,6 +172,7 @@ protected:
 	bool bIsThirdPersonCurrentCamera;
 
 	bool bIsgoingForward;
+	bool bIsgoingRight;
 
 
 	FPostProcessSettings* PostProcessSettings;
@@ -253,6 +254,6 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	inline bool IsGoingForward() const { return bIsgoingForward; }
+	inline bool IsGoingForward() const { return bIsgoingForward || bIsgoingRight; }
 
 };
