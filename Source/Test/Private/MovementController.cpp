@@ -16,7 +16,7 @@ UMovementController::UMovementController()
 
 UMovementController::UMovementController(ACharacterController* Controller)
 {
-	pMyController = Controller;
+	PMyController = Controller;
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
@@ -43,7 +43,9 @@ void UMovementController::SetMovementActive()
 
 void UMovementController::SetController(ACharacterController* Controller)
 {
-	pMyController = Controller;
+
+	PMyController = Controller;
+	
 }
 
 // Called when the game starts

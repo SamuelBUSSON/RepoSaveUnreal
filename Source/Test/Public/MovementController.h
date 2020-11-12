@@ -4,8 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/TimelineComponent.h"
-#include "GameFramework/Character.h"
 #include "CharacterController.h"
 #include "MovementController.generated.h"
 
@@ -28,7 +26,9 @@ public:
 	virtual void MovementAction();
 	virtual void SetMovementActive();
 	virtual void SetController(ACharacterController* Controller);
-	ACharacterController* pMyController;
+
+	UPROPERTY()
+	ACharacterController* PMyController;
 
 
 protected:
@@ -36,7 +36,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	bool bIsComponentActive;
-	bool isBlockingOthers;
+	bool bIsBlockingOthers;
 
 	UPROPERTY(EditAnywhere, Category = Debug)
 	bool bDisplayValues;
@@ -44,9 +44,9 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	inline bool IsComponentActive() { return bIsComponentActive; }
-	inline bool IsBlockingOthers() { return isBlockingOthers; }
-	inline void SetIsComponentActive(bool isActive) { bIsComponentActive = isActive; }
+	inline bool IsComponentActive() const { return bIsComponentActive; }
+	inline bool IsBlockingOthers() const { return bIsBlockingOthers; }
+	inline void SetIsComponentActive(bool IsActive) { bIsComponentActive = IsActive; }
 
 private:
 

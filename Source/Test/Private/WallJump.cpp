@@ -20,21 +20,21 @@ void UWallJump::OnMovementUpdate(float DeltaTime)
 {
 
 	FHitResult OutHit;
-	FVector Start = pMyController->GetActorLocation();
-	FVector End = Start + pMyController->GetActorForwardVector() * 50.0f;
+	FVector Start = PMyController->GetActorLocation();
+	FVector End = Start + PMyController->GetActorForwardVector() * 50.0f;
 	FCollisionQueryParams CollisionParams;
 
-	if (pMyController->IsGoingForward() && 
-		pMyController->GetCharacterMovement()->IsFalling() &&
+	if (PMyController->IsGoingForward() && 
+		PMyController->GetCharacterMovement()->IsFalling() &&
 		GetWorld()->LineTraceSingleByObjectType(OutHit, Start, End, ECC_WorldStatic, CollisionParams))
 	{
 		if (!bIsStick)
 		{
 			bIsStick = true;
-			isBlockingOthers = true;
+			bIsBlockingOthers = true;
 
-			pMyController->GetCharacterMovement()->GravityScale = 0.0f;
-			pMyController->GetCharacterMovement()->Velocity = FVector::ZeroVector;
+			PMyController->GetCharacterMovement()->GravityScale = 0.0f;
+			PMyController->GetCharacterMovement()->Velocity = FVector::ZeroVector;
 
 			WallNormal = OutHit.ImpactNormal;
 			WallNormal.Normalize();
@@ -76,10 +76,10 @@ void UWallJump::MovementAction()
 	if (bIsStick)
 	{
 		//print("Jump");
-		pMyController->GetCharacterMovement()->GravityScale = baseGravityScale;
-		isBlockingOthers = false;
+		PMyController->GetCharacterMovement()->GravityScale = baseGravityScale;
+		bIsBlockingOthers = false;
 
-		FVector ImpulseForce = (-pMyController->GetActorForwardVector() * PropulsionSpeed).RotateAngleAxis(PropulsionAngle, pMyController->GetActorRightVector());
+		FVector ImpulseForce = (-PMyController->GetActorForwardVector() * PropulsionSpeed).RotateAngleAxis(PropulsionAngle, PMyController->GetActorRightVector());
 
 		if (bDisplayValues)
 		{
@@ -88,7 +88,7 @@ void UWallJump::MovementAction()
 			printFString("Result : %s", *(ImpulseForce.ToString()));
 		}
 
-		pMyController->GetCharacterMovement()->AddImpulse(ImpulseForce , true);
+		PMyController->GetCharacterMovement()->AddImpulse(ImpulseForce , true);
 
 		
 	}
@@ -117,7 +117,7 @@ void UWallJump::SetPlayerFallStrength()
 	}
 
 	if(bIsStick)
-		pMyController->GetCharacterMovement()->GravityScale = SlippingSpeed;
+		PMyController->GetCharacterMovement()->GravityScale = SlippingSpeed;
 }
 
 void UWallJump::ResetWallStick()
@@ -125,6 +125,6 @@ void UWallJump::ResetWallStick()
 
 	//print("Unstick");
 	bIsStick = false;
-	isBlockingOthers = false;
-	pMyController->GetCharacterMovement()->GravityScale = baseGravityScale;
+	bIsBlockingOthers = false;
+	PMyController->GetCharacterMovement()->GravityScale = baseGravityScale;
 }

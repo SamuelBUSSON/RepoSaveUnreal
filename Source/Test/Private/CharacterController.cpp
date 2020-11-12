@@ -9,14 +9,12 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
-#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "UObject/UObjectGlobals.h"
-#include "DrawDebugHelpers.h" 
 #include "MovementController.h"
 #include "Runtime/Engine/Classes/Kismet/KismetSystemLibrary.h"
 #include "DashMovement.h"
+#include "DoubleJumpComponent.h"
 #include "WallJump.h"
 #include "SingingComponent.h"
 
@@ -89,6 +87,9 @@ ACharacterController::ACharacterController()
 	SingingComponent = CreateDefaultSubobject<USingingComponent>(TEXT("Singing Component"));
 	SingingComponent->SetController(this);
 
+	DoubleJumpComponent = CreateDefaultSubobject<UDoubleJumpComponent>(TEXT("Double Jump Component"));
+	DoubleJumpComponent->SetController(this);
+
     //Take control of the default Player
     AutoPossessPlayer = EAutoReceiveInput::Player0;
 
@@ -96,6 +97,8 @@ ACharacterController::ACharacterController()
 
 		
 }
+
+
 
 // Called when the game starts or when spawned
 void ACharacterController::BeginPlay()
@@ -168,6 +171,8 @@ void ACharacterController::SetupPlayerInputComponent(class UInputComponent* Play
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacterController::CustomJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacterController::CustomStopJumping);
+
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this->DoubleJumpComponent, &UMovementController::MovementAction);
 
 	PlayerInputComponent->BindAction("Sing", IE_Pressed, this, &ACharacterController::StartSinging);
 	PlayerInputComponent->BindAction("ValidateEcho", IE_Pressed, this, &ACharacterController::ValidateEcho);
@@ -562,6 +567,13 @@ void ACharacterController::SwitchCameras(bool isSinging)
 
 	CameraLerp->SetWorldLocationAndRotation(FollowCamera->GetComponentLocation(), FollowCamera->GetComponentRotation());
 	CurveFCameraTimeline.PlayFromStart();
+}
+
+void ACharacterController::Landed(const FHitResult& Hit)
+{
+	ACharacter::Landed(Hit);
+	print("Smu");
+	OnLandEvent.Broadcast();
 }
 
 /*

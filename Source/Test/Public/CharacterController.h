@@ -9,8 +9,6 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-
-#include "GameFramework/Pawn.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "MovementController.h"
 #include "SingingComponent.h"
@@ -27,7 +25,7 @@ enum ECameraType
 
 #include "CharacterController.generated.h"
 
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLanded);
 class UCurveFloat;
 enum ESingButton;
 
@@ -60,6 +58,9 @@ class TEST_API ACharacterController : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
 	class USingingComponent* SingingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movements, meta = (AllowPrivateAccess = "true"))
+	class UMovementController* DoubleJumpComponent;
 
 
 	virtual void BeginPlay() override;
@@ -112,7 +113,11 @@ public:
 
 	void SwitchCameras(bool isSinging);
 
-
+	UPROPERTY(BlueprintAssignable)
+	FOnLanded OnLandEvent;
+	
+	virtual void Landed(const FHitResult& Hit) override;
+	
 protected:
 
 	FTimeline CurveFTimeline;

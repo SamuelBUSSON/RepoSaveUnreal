@@ -31,13 +31,13 @@ void UDashMovement::MovementAction()
 	if(!bIsTimelineSet)
 		CheckTimeline();
 
-	FVector dashDirectionActor = pMyController->GetCharacterMovement()->IsFalling() ? pMyController->GetFollowCamera()->GetForwardVector() : pMyController->GetActorForwardVector();
+	FVector dashDirectionActor = PMyController->GetCharacterMovement()->IsFalling() ? PMyController->GetFollowCamera()->GetForwardVector() : PMyController->GetActorForwardVector();
 	dashDirectionActor *= DashStrength;
 	dashDirectionActor.Z += DashDelta;
 
-	pMyController->GetCharacterMovement()->GetCharacterOwner()->LaunchCharacter(dashDirectionActor, true, true);
+	PMyController->GetCharacterMovement()->GetCharacterOwner()->LaunchCharacter(dashDirectionActor, true, true);
 
-	pMyController->GetCameraBoom()->bEnableCameraLag = true;
+	PMyController->GetCameraBoom()->bEnableCameraLag = true;
 }
 
 void UDashMovement::SetMovementActive()
