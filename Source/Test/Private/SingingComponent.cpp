@@ -8,7 +8,7 @@ USingingComponent::USingingComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	//PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = true;
 
 	//Init values that can be modifiy through the inspector
 	NotesNumber = 4;
@@ -17,7 +17,14 @@ USingingComponent::USingingComponent()
 	CurrentEchoPlayedSong = 0;
 	CurrentNumberOfNotesInEcho = 0;
 	bIsSinging = false;
+	bIsHoldingSingingButton = false;
+	
+	BarOffsetSpeed = 100.0f;
+	BarOffset = 25.0f;
 
+	CurrentColumn = -1;
+	
+	bCanSwitchNote = true;
 
 	p_CurrentEcho = MakeShareable(new TArray<ESingButton>());
 }
@@ -34,18 +41,70 @@ void USingingComponent::BeginPlay()
 
 	//Init the echo array with the number of notes
 	p_CurrentEcho->Init(ESingButton::None, NotesNumber);
+	
 }
 
 
 //Set the character controller 
 void USingingComponent::SetController(ACharacterController* Controller)
 {
-	pMyController = Controller;
+	PMyController = Controller;
 }
 
 void USingingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+	if(bIsHoldingSingingButton)
+	{
+		BarPosition += DeltaTime * BarOffsetSpeed;
+
+		/*printFString("%f", BarPosition);
+		printFString("UI Size :%f", UISize);*/
+		
+		if(BarPosition >= UISize + BarOffset)
+			BarPosition = -UISize - BarOffset;
+
+
+		if(BarPosition > -UISize - UIImageSize && BarPosition <  UISize + UIImageSize)
+		{
+			printFString("Bar position : %f", BarPosition);
+		}		
+
+		/*if(static_cast<int32>(BarPosition * 100) % (100 / NotesNumber) == 0 && bCanSwitchNote)
+		{
+			printFString("Percent %f", BarPosition);
+			++CurrentColumn;
+			
+			PlaySong(ESingButton::Aether);
+			OldPercent = BarPosition;
+			bCanSwitchNote = false;
+		}
+
+		//Use this to avoid call twice the function
+		// ex : Percent = 0.2505 and Percent = 0.256
+		if(BarPosition > (OldPercent + 0.1f) && !bCanSwitchNote)
+			bCanSwitchNote = true;	*/
+		
+		
+		OnEchoSingingBarPercent.Broadcast(BarPosition);
+	}
+	
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+void USingingComponent::SetUISize(float NewSize)
+{
+	UISize = NewSize;
+	BarPosition = -UISize - BarOffset;
+}
+
+void USingingComponent::SetUIImageSize(float ImageSize)
+{
+	UIImageSize = ImageSize;
+}
+
+void USingingComponent::SetBarPosition(float NewPosition)
+{
+	BarPosition = NewPosition;
 }
 
 
@@ -65,7 +124,17 @@ void USingingComponent::StartSinging()
 
 	StartSingingDelegate.Broadcast(bIsSinging);
 
-	pMyController->SwitchCameras(bIsSinging);
+	PMyController->SwitchCameras();
+}
+
+void USingingComponent::StartSingingHold()
+{
+	bIsHoldingSingingButton = true;
+}
+
+void USingingComponent::StopSingingHold()
+{
+	bIsHoldingSingingButton = false;	
 }
 
 /*

@@ -30,6 +30,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEchoSinging, ESingButton, SingNot
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSinging, ESingButton, SingNote);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSingingPercent, float, Position);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStartSingingDelegate, bool, StartSinging);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -51,15 +53,22 @@ public:
 	/** Delegate called when the player start and stop singing
 	* @param StartSinging True when the player enter the singing mode false when he leaves the singing mode
 	*/
-	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Event")
+	UPROPERTY(BlueprintAssignable, Category = "Event")
 	FOnStartSingingDelegate StartSingingDelegate;
 
 	/**
 	* Delegate called when the player validate the echo and the echo loop
 	* @param SingNote The note the echo is playing
 	*/
-	UPROPERTY(BlueprintCallable, Category = "Event")
+	UPROPERTY(BlueprintAssignable, Category = "Event")
 	FOnEchoSinging OnEchoSinging;
+	
+	/**
+	* Delegate called when the player validate the echo and the echo loop
+	* @param SingNote The note the echo is playing
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Event")
+	FOnSingingPercent OnEchoSingingBarPercent;
 
 
 	/** Delegate listener called when the player start and stop singing
@@ -92,6 +101,18 @@ public:
 	*/
 	void StartSinging();
 
+	
+	/**
+	* Start holding the singing button in order to move the bar
+	*/
+	void StartSingingHold();
+
+	
+	/**
+	*  Stop holding the singing button
+	*/
+	void StopSingingHold();
+
 	/**
 	* Set the character controller to call function from ACharacterController
 	*/
@@ -106,15 +127,43 @@ protected:
 	//The number of notes the echo can store
 	UPROPERTY(EditAnywhere, Category = Sing)
 	int32 NotesNumber;
+	
+	//The number of notes the echo can store
+	UPROPERTY(EditAnywhere, Category = Sing)
+	float BarOffsetSpeed;
+	
+	//The offset of the bat in ui
+	UPROPERTY(EditAnywhere, Category = UI)
+	float BarOffset;
+	
+	//The offset of the bat in ui
+	UPROPERTY(EditAnywhere, Category = UI)
+	float UISize;
+
+	//The offset of the bat in ui
+	UPROPERTY(EditAnywhere, Category = UI)
+	float UIImageSize;
+
+	
+	//The offset of the bat in ui
+	UPROPERTY()
+	int CurrentColumn;	
+	
+	float BarPosition;	
+	float OldPercent;
+
+	
 
 	TSharedPtr<TArray<ESingButton>> p_CurrentEcho;
 	int32 CurrentNumberOfNotesInEcho;
 	int32 CurrentEchoPlayedSong;
 	FTimerHandle EchoTimerHandle;
 
-	ACharacterController* pMyController;
+	ACharacterController* PMyController;
 
 	bool bIsSinging;
+	bool bIsHoldingSingingButton;
+	bool bCanSwitchNote;
 
 public:	
 	// Called every frame
@@ -127,7 +176,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	inline int32 GetCurrentNote() const { return CurrentNumberOfNotesInEcho; }
 
-
 	UFUNCTION(BlueprintCallable)
 	inline int32 GetNumberOfNotes() const { return NotesNumber; }
+	
+	UFUNCTION(BlueprintCallable)
+	inline float GetBarOffset() const { return BarOffset; }
+	
+	UFUNCTION(BlueprintCallable)
+	void SetUISize(float NewSize);
+
+	UFUNCTION(BlueprintCallable)
+	void SetUIImageSize(float ImageSize);
+	
+	UFUNCTION(BlueprintCallable)
+    void SetBarPosition(float NewPosition); 
 };

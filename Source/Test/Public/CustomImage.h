@@ -23,4 +23,5 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	inline TEnumAsByte<ESingButton> GetNote() const { return ImageNote; }
+
 };

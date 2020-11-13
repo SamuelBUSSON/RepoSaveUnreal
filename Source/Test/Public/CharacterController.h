@@ -76,42 +76,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseLookUpRate;
 
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float DashStrength;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float DashDelta;
-
-	UFUNCTION()
-	void TimelineProgress(FVector Value);
-
 	UFUNCTION()
 	void TimelineProgressCameraTransition(FVector Value);
-
-	UFUNCTION()
-	void StopDashTimeline();
 
 	UFUNCTION()
 	void StopSingingTimeline();
 
 	virtual void Tick(float DeltaTime) override;
 
-	UFUNCTION(BlueprintCallable, Category = "Wall Run")
-	bool IsWallRuningRight();
 
-	UFUNCTION(BlueprintCallable, Category = "Wall Run")
-	bool IsWallRuningLeft();
+	
 
-
-	UFUNCTION(BlueprintCallable, Category = "Wall Run")
-	FVector GetWallPositionLeft();
-
-
-	UFUNCTION(BlueprintCallable, Category = "Wall Run")
-	FVector GetWallPositionRight();
-
-
-	void SwitchCameras(bool isSinging);
+	void SwitchCameras();
 
 	UPROPERTY(BlueprintAssignable)
 	FOnLanded OnLandEvent;
@@ -123,8 +99,6 @@ protected:
 	FTimeline CurveFTimeline;
 	FTimeline CurveFCameraTimeline;
 
-
-
 	UPROPERTY(EditAnywhere, Category = CameraType)
 	TEnumAsByte<ECameraType> camera;
 
@@ -133,44 +107,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = Movements)
 	UCurveVector* CurveCameraVector;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float DashFOVDelta;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float DashCameraLagDelta;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float DashChromaticAbberationDelta;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float HoldTimeAirControl;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float AirControlFallStrength;
-
-	UPROPERTY(EditAnywhere, Category = Movements)
-	float AirControlValue;
-
-
-	UPROPERTY(EditAnywhere, Category = WallRun)
-	float WallRunForce;
-
-	UPROPERTY(EditAnywhere, Category = WallRun)
-	float WallRunCameraTiltTime;
-
-
-	UPROPERTY(EditAnywhere, Category = WallRun)
-	float WallRunCameraTiltAngle;
-
-
-
+	
+	UPROPERTY()
+	FVector ControllerInput;
 
 	float BaseFOV;
 	float BaseCameraLag;
-	float BaseChromaticAbberation;
-
-
 	float BaseGravityScale;;
 	float BaseAirControl;
 
@@ -203,20 +145,14 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
-	void Dash();
-
-	void StopDashing();
-
 	void CustomJump();
 
 	void CustomStopJumping();
 
-	void StartAirControl();
-
-	void StopAirControl();
-
 	void StartSinging();
 	void ValidateEcho();
+	void StartSingingHold();
+	void StopSingingHold();
 
 	DECLARE_DELEGATE_OneParam(FPlaySongDelegate, ESingButton);
 	void PlayNote(ESingButton note);
@@ -225,16 +161,7 @@ protected:
 
 	void LookUpCamera(float Rate);
 
-	void CheckForWall(float Value);
 
-	void StartWallRun();
-
-	void StopWallRun();
-
-
-
-
-	void CheckHoldJump();
 	FTimerHandle FuzeTimerHandle;
 
 	bool bIsInputJump;
@@ -258,6 +185,8 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	
+	FORCEINLINE FVector GetControllerInput() const { return ControllerInput; }
 
 	inline bool IsGoingForward() const { return bIsgoingForward || bIsgoingRight; }
 
